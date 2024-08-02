@@ -1,0 +1,153 @@
+#Step 1 Load dataset
+import pandas as pd
+
+# Load the dataset
+file_path = 'D:/task5/HousingData.csv'  # Update this path to match your file
+df = pd.read_csv(file_path)
+
+# Display the first few rows
+df.head()
+
+#Step 2: Data Cleaning, Feature Engineering, and Splitting the Data
+# Print the column names
+print(df.columns)
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+# Print the column names
+print(df.columns)
+
+# Check for missing values
+print(df.isnull().sum())
+
+# Drop rows with missing target values
+df = df.dropna(subset=['MEDV'])
+
+# Impute missing feature values (if any)
+df = df.fillna(df.mean())
+
+# Feature Engineering: Standardize the features
+X = df.drop('MEDV', axis=1)  # Use 'MEDV' as the target variable
+y = df['MEDV']
+
+scaler = StandardScaler()
+X_scaled = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
+
+# Split the data
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+
+#Step 3: Train the Machine Learning Model
+from sklearn.ensemble import RandomForestRegressor
+
+# Initialize the model
+model = RandomForestRegressor(n_estimators=100, random_state=42)
+
+# Train the model
+model.fit(X_train, y_train)
+
+#Step 4: Evaluate the Model (Evaluate the model using the updated target variable.)
+
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+import numpy as np
+
+# Make predictions
+y_pred = model.predict(X_test)
+
+
+# Evaluate the model
+rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+print(f'RMSE: {rmse}')
+
+# Evaluate the model
+mae = mean_absolute_error(y_test, y_pred)
+
+print(f'MAE: {mae}')
+
+# Evaluate the model
+r2 = r2_score(y_test, y_pred)
+
+print(f'R²: {r2}')
+
+#Step5 Save the model
+
+
+import pickle
+
+# Save the trained model to a file
+model_path = 'D:/task5/model.pkl'
+with open(model_path, 'wb') as file:
+    pickle.dump(model, file)
+
+#Step 6: Create an API with Flask
+
+
+pip install Flask
+
+!python app.py
+
+from flask import Flask, request, jsonify
+import pickle
+import numpy as np
+
+app = Flask(__name__)
+
+# Load the trained model
+with open('model.pkl', 'rb') as file:
+    model = pickle.load(file)
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    # Get the data from the POST request
+    data = request.get_json(force=True)
+    features = np.array(data['features']).reshape(1, -1)
+
+    # Predict the price
+    prediction = model.predict(features)
+    
+    # Return the result as JSON
+    return jsonify({'price': prediction[0]})
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

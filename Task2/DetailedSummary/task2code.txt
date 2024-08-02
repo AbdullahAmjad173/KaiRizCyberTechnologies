@@ -1,0 +1,321 @@
+#Step: 1Load and Preprocess the Data
+
+# Import necessary libraries
+import pandas as pd
+import sklearn
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import ConfusionMatrixDisplay, roc_curve, auc
+from sklearn.datasets import load_iris
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.model_selection import GridSearchCV
+pip install --upgrade scikit-learn
+
+# Load the dataset
+titanic_data = pd.read_csv('D:/Internship/dataset/train.csv')
+
+# Display the first few rows of the dataset
+titanic_data.head()
+
+# Handle missing values
+# For simplicity, let's fill missing age values with the median and drop rows with missing embarked values
+imputer = SimpleImputer(strategy='median')
+titanic_data['Age'] = imputer.fit_transform(titanic_data[['Age']])
+titanic_data.dropna(subset=['Embarked'], inplace=True)
+
+#Encode categorical variables
+# We'll use one-hot encoding for 'Sex' and 'Embarked' columns
+categorical_features = ['Sex', 'Embarked']
+categorical_transformer = OneHotEncoder(drop='first')
+
+# Scale numerical features
+numerical_features = ['Age', 'Fare']
+numerical_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='median')),
+    ('scaler', StandardScaler())])
+
+
+# Combine preprocessing steps
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numerical_transformer, numerical_features),
+        ('cat', categorical_transformer, categorical_features)
+    ])
+
+# Define the feature set and target variable
+X = titanic_data.drop(['Survived', 'Name', 'Ticket', 'Cabin', 'PassengerId'], axis=1)
+y = titanic_data['Survived']
+
+# Preprocess the data
+X_preprocessed = preprocessor.fit_transform(X)
+
+#Step:2 # Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X_preprocessed, y, test_size=0.2, random_state=42)
+
+# Display the shapes of the splits
+print(f'Training set shape: {X_train.shape}')
+print(f'Testing set shape: {X_test.shape}')
+
+# Import necessary libraries
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+
+#Step: 3  # Initialize the models
+
+# Initialize the models
+rf_model = RandomForestClassifier(random_state=42)
+
+# Train the models
+rf_model.fit(X_train, y_train)
+
+# Initialize the models
+svm_model = SVC(probability=True, random_state=42)
+
+# Train the models
+svm_model.fit(X_train, y_train)
+
+#Step: 4  # Define hyperparameters for Random Forest
+
+# Import necessary libraries
+from sklearn.model_selection import GridSearchCV
+
+# Define hyperparameters for Random Forest
+rf_params = {
+    'n_estimators': [100, 200, 300],
+    'max_depth': [None, 10, 20, 30],
+    'min_samples_split': [2, 5, 10]
+}
+# Perform Grid Search for Random Forest
+rf_grid_search = GridSearchCV(rf_model, rf_params, cv=5, scoring='accuracy')
+rf_grid_search.fit(X_train, y_train)
+
+# Define hyperparameters for SVM
+svm_params = {
+    'C': [0.1, 1, 10],
+    'kernel': ['linear', 'rbf', 'poly'],
+    'gamma': ['scale', 'auto']
+}
+
+# Perform Grid Search for SVM
+svm_grid_search = GridSearchCV(svm_model, svm_params, cv=5, scoring='accuracy')
+svm_grid_search.fit(X_train, y_train)
+
+# Best parameters and scores
+print(f'Best parameters for Random Forest: {rf_grid_search.best_params_}')
+print(f'Best score for Random Forest: {rf_grid_search.best_score_}')
+print(f'Best parameters for SVM: {svm_grid_search.best_params_}')
+print(f'Best score for SVM: {svm_grid_search.best_score_}')
+
+#Step:5 # Predict
+
+# Import necessary libraries
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+
+# Predict on the test set
+rf_predictions = rf_grid_search.predict(X_test)
+svm_predictions = svm_grid_search.predict(X_test)
+
+
+# Evaluate the models
+def evaluate_model(y_true, y_pred):
+    accuracy = accuracy_score(y_true, y_pred)
+    precision = precision_score(y_true, y_pred)
+    recall = recall_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred)
+    roc_auc = roc_auc_score(y_true, y_pred)
+    return accuracy, precision, recall, f1, roc_auc
+
+
+# Evaluate Random Forest
+rf_metrics = evaluate_model(y_test, rf_predictions)
+print(f'Random Forest Metrics: Accuracy={rf_metrics[0]}, Precision={rf_metrics[1]}, Recall={rf_metrics[2]}, F1-score={rf_metrics[3]}, ROC AUC={rf_metrics[4]}')
+
+# Evaluate SVM
+svm_metrics = evaluate_model(y_test, svm_predictions)
+print(f'SVM Metrics: Accuracy={svm_metrics[0]}, Precision={svm_metrics[1]}, Recall={svm_metrics[2]}, F1-score={svm_metrics[3]}, ROC AUC={svm_metrics[4]}')
+
+#Step:6 # Confusion matrix and # ROC Curve
+
+import matplotlib.pyplot as plt
+from sklearn.metrics import ConfusionMatrixDisplay, roc_curve, auc
+
+
+# Confusion matrix for Random Forest
+ConfusionMatrixDisplay.from_estimator(rf_grid_search, X_test, y_test)
+plt.title('Random Forest Confusion Matrix')
+plt.show()
+
+# Confusion matrix for SVM
+ConfusionMatrixDisplay.from_estimator(svm_grid_search, X_test, y_test)
+plt.title('SVM Confusion Matrix')
+plt.show()
+
+# ROC Curve
+def plot_roc_curve(model, X_test, y_test):
+    y_prob = model.predict_proba(X_test)[:, 1]
+    fpr, tpr, _ = roc_curve(y_test, y_prob)
+    roc_auc = auc(fpr, tpr)
+    plt.plot(fpr, tpr, label=f'ROC curve (area = {roc_auc:.2f})')
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic (ROC) Curve')
+    plt.legend(loc='lower right')
+    plt.show()
+
+plot_roc_curve(rf_grid_search, X_test, y_test)
+plot_roc_curve(svm_grid_search, X_test, y_test)
+
+#Step: 7  Analyze Feature Importance
+
+# Feature importance for Random Forest
+rf_feature_importances = rf_grid_search.best_estimator_.feature_importances_
+feature_names = preprocessor.transformers_[0][1].named_steps['scaler'].get_feature_names_out(numerical_features).tolist() + \
+                preprocessor.transformers_[1][1].get_feature_names_out(categorical_features).tolist()
+
+# Plot feature importances
+plt.barh(feature_names, rf_feature_importances)
+plt.xlabel('Feature Importance')
+plt.title('Random Forest Feature Importance')
+plt.show()
+
+# Step: 8   Explain Individual Predictions
+
+pip install lime
+
+from lime import lime_tabular
+
+
+# Step 8: Use LIME to explain individual predictions
+
+# Import LIME
+from lime import lime_tabular
+
+# Initialize LIME Explainer for Random Forest
+rf_explainer = lime_tabular.LimeTabularExplainer(X_train,
+                                                 feature_names=feature_names,
+                                                 class_names=['Not Survived', 'Survived'],
+                                                 mode='classification')
+
+# Initialize LIME Explainer for SVM
+svm_explainer = lime_tabular.LimeTabularExplainer(X_train,
+                                                  feature_names=feature_names,
+                                                  class_names=['Not Survived', 'Survived'],
+                                                  mode='classification')
+
+# Select a sample from the test set (for example, the first sample)
+sample_idx = 0
+sample = X_test[sample_idx]
+true_label = y_test.iloc[sample_idx]
+
+# Explain Random Forest prediction
+rf_explanation = rf_explainer.explain_instance(sample, rf_grid_search.predict_proba, num_features=len(feature_names))
+
+print('Random Forest Prediction:')
+print(f'True Label: {true_label}')
+print(f'Predicted Probability (Survived): {rf_grid_search.predict_proba([sample])[0][1]}')
+rf_explanation.show_in_notebook()
+
+# Explain SVM prediction
+svm_explanation = svm_explainer.explain_instance(sample, svm_grid_search.predict_proba, num_features=len(feature_names))
+
+print('SVM Prediction:')
+print(f'True Label: {true_label}')
+print(f'Predicted Probability (Survived): {svm_grid_search.predict_proba([sample])[0][1]}')
+svm_explanation.show_in_notebook()
+
+
+
+import joblib
+
+# Assuming 'rf_model' is your RandomForestClassifier model object
+joblib.dump(rf_grid_search.best_estimator_, 'D:/Internship/dataset/rf_model.pkl')
+
+# Assuming 'svm_model' is your SVC model object
+joblib.dump(svm_grid_search.best_estimator_, 'D:/Internship/dataset/svm_model.pkl')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

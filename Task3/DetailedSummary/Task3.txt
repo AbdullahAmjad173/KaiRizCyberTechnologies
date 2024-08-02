@@ -1,0 +1,25 @@
+Zookeeper Properties.
+.\bin\windows\zookeeper-server-start.bat .\config\zookeeper.properties
+
+Start Kafka Server
+.\bin\windows\kafka-server-start.bat .\config\server.properties
+
+Real time data topic
+.\bin\windows\kafka-topics.bat --create --topic real-time-data --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+
+spark-streaming
+.\bin\spark-submit --packages org.apache.spark:spark-streaming-kafka-0-10_2.12:3.2.0 \ --master local[*] C:\spark_streaming_kafka.py
+
+Real time:
+spark_streaming_kafka.py
+
+
+Directory of install JDK
+C:\Program Files\Java\jdk-22\
+
+
+Helping Material:
+https://youtu.be/lFox22RJE7s?si=P2XS9JaGRMuKx2Hx
+https://youtu.be/heXd6JA2TQc?si=qFlwmpsfC22F5A9X (big tech talk)
+
+
